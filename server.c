@@ -63,7 +63,7 @@ request_t *request_queue;
 cache_entry_t** cache_buffer;
 
 /* ************************ Dynamic Pool Code ***********************************/
-// Extra Credit: This function implements the policy to change the worker thread pool dynamically
+// This function implements the policy to change the worker thread pool dynamically
 // depending on the number of requests
 void * dynamic_pool_size_update(void *arg) {
   while(1) {
@@ -106,13 +106,6 @@ void addIntoCache(char *mybuf, char *memory , int memory_size){
     memcpy(cache_buffer[cur_index]->content, memory, memory_size);
     cache_buffer[cur_index]->len = memory_size;
     cur_index = (cur_index + 1) % cache_size;
-
-  //printf("len is %d cache buffer is  %s, request is %s content is %s\n",cache_buffer[cur_index].len,cache_buffer[cur_index].request,cache_buffer[cur_index].content);
-  // strcpy(cache_buffer[cur_index].request, mybuf);
-  // strcpy(cache_buffer[cur_index].content, memory);
-
-  //printf("len is %d cache buffer is  %s, request is %s content is %s\n",cache_buffer[cur_index].len,cache_buffer[cur_index].request,cache_buffer[cur_index].content);
-  //printf("index is %d cache buffer is  %s, request is %s\n",cur_index,cache_buffer[cur_index].request,mybuf);
 }
 
 // clear the memory allocated to the cache
@@ -158,7 +151,6 @@ int readFromDisk(char * path_buf) {
 // Function to get the content type from the request
 char* getContentType(char * mybuf) {
   // Should return the content type based on the file type in the request
-  // (See Section 5 in Project description for more details)
   int path_len = strlen(mybuf);
   char *content_type = malloc(13*sizeof(char));
 
@@ -217,7 +209,6 @@ void * dispatch(void *arg) {
      request.fd = fd;
      request.request = filebuf;
      request_queue[queue_next_index] = request;
-     //printf(" request: %p fd: %d\n",request_queue[queue_next_index].request,request_queue[queue_next_index].fd);
      queue_next_index = (queue_next_index + 1) % qlen;
 
      fd = 0;
@@ -272,21 +263,15 @@ void * worker(void *arg) {
       printf("Error: Fail to lock\n");
     }
 
-    //printf("request is %s // cache index is %d\n",request,cache_index);
-
     if(pthread_mutex_lock(&log_lock) < 0) {
       printf("Error: Fail to lock\n");
     }
     con = getContentType(request);
-    //printf("fd is %d, request is %s con is %s\n",fd,request,con);
     int length;
     char* buffer;
-    // free(buffer);
     strcpy(path_buf, path);
     strcat(path_buf, request);
-    // printf("path is %s, request is %s path_buf is %s\n",path,request,path_buf);
     cache_index = getCacheIndex(request);
-    // printf("cache size is %d cache_index is %d, request is %s con is %s \n",cache_size,cache_index,request,con);
 
     if((log_file = fopen("web_server_log", "a")) == NULL) {
       perror("failed to open log file");
@@ -314,13 +299,8 @@ void * worker(void *arg) {
         if(fwrite(msg_to_log_file, sizeof(char), msg_len, log_file) < msg_len) {
           perror("error writing to log file");
         }
-        // printf("HIT 2222222222222222222222\n");
       }
-      // free(con);
     } else {   // cache_index == -1
-      // if(pthread_mutex_lock(&cache_lock) < 0) {
-      //   printf("Error: Fail to lock\n");
-      // }
       hit_miss=0;
       if(readFromDisk(path_buf)== 0) {
         fseek(fp,0,SEEK_END);
@@ -332,13 +312,8 @@ void * worker(void *arg) {
         }
         fclose(fp);
       }
-      //printf("request is %s length is %d\n",request,length);
       addIntoCache(request,buffer,length);
-      // if(pthread_mutex_unlock(&cache_lock) < 0) {
-      //   printf("Error: Fail to lock\n");
-      // }
       if(return_result(fd,con,buffer,sizeof(char)*length)!=0) {
-        // addIntoCache(request,buffer,length);
         if((error_code = return_error(fd,buffer))!= 0) {
           printf("fd 7: %d  ",fd);
           perror("failed to return result or error \n");
@@ -350,22 +325,17 @@ void * worker(void *arg) {
           if(fwrite(msg_to_log_file, sizeof(char), msg_len, log_file) < msg_len) {
             perror("error writing to log file");
           }
-          // printf("MISS 11111111111111111111\n");
         }
       } else {
         micro_time = getCurrentTimeInMicro() - micro_time;
-      // return_result(fd,con,buffer,sizeof(char)*length);
         sprintf(msg_to_log_file, "[%d][%d][%d][%s][%d][%d us][%s]\n", my_thread_id, ++num_of_requests, fd, request, length, micro_time, "MISS");
         int msg_len = strlen(msg_to_log_file);
         if(fwrite(msg_to_log_file, sizeof(char), msg_len, log_file) < msg_len) {
           perror("error writing to log file");
         }
-        // printf("MISS 2222222222222222222222222\n");
         free(buffer);
-        // free(con);
       }
     }
-    //free(buffer);
   	fclose(log_file);
     if(pthread_mutex_unlock(&log_lock) < 0) {
       printf("Error: Fail to lock\n");
@@ -424,11 +394,8 @@ int main(int argc, char **argv) {
       return -1;
     }
 
-    // request_queue = (request_t*) malloc(qlen*sizeof(request_t));
-
     if (argc == 8) {
       cache_size = atoi(argv[7]);
-      //printf("Cache size @@@@@@@@@@@@@@@@@ %d\n", cache_size);
       if (cache_size > MAX_CE) {
         printf("Invalid cache size.\n");
         return -1;
